@@ -4,7 +4,7 @@
 """
 
 # Python standard library
-import time, os, warnings, math, inspect, datetime, distutils
+import time, os, warnings, math, inspect, datetime
 from typing import List
 
 # Third-party libraries
