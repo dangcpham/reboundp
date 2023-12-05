@@ -1,3 +1,8 @@
+"""
+    author: Dang Pham
+    last modified: December 2023
+"""
+
 # Python standard library
 import time, os, warnings, urllib3, math, inspect, datetime
 from typing import List

@@ -18,40 +18,56 @@
 from reboundp import ReboundParallel
 
 @ReboundParallel
-def setup_sim(port, ecc):
-	sim = rebound.Simulation()
-	sim.add(m=1)
-	sim.add(m=1e-3,  a=1,  e=ecc)
-	sim.integrate(1e5)
-	return sim
+def setup_sim(ecc):
+   sim = rebound.Simulation()
+   sim.add(m=1)
+   sim.add(m=1e-3,  a=1,  e=ecc)
+   sim.integrate(1e5)
+   return sim
 
 ecc_arr = numpy.linspace(0, 0.999, 300)
-# run in parallel using 12 cores
-results = setup_sim.run(ecc_arr, cores=12, progressbar=True)
+# run in parallel using all cores
+results = setup_sim.run(ecc_arr, progressbar=True)
 ```
-Output:
+This comes with a nice progressbar:
 ```
 > Progress: [==================================================] 100.0% [300/300 Tasks] [13.5s]
+```
+---
+**Another usage**: run simulations many times.
+```
+from reboundp import ReboundParallel
+
+@ReboundParallel
+def setup_sim(ecc):
+   sim = rebound.Simulation()
+   sim.add(m=1)
+   sim.add(m=1e-3,  a=1,  e=ecc)
+   sim.integrate(1e5)
+   return sim
+
+# run setup_sim 10 times in parallel using 10 cores
+results = setup_sim.run(jobs=10, cores=10)
 ```
 ---
 ***Advanded usage***: run a simulation in parallel, but now we can start/stop/retrieve simulation.
 ```
 def setup_sim(port, _):
-	sim = rebound.Simulation()
-	sim.add("Solar System")
-	
-	# IMPORTANT: must enable server to start/stop/retrieve simulations
-	sim.start_server(port=port)
-	
-	t_arr = np.linspace(0,  1e4,  100)
-	jupiter_xyz = []
-	
-	for t in t_arr:
-		sim.integrate(t,  exact_finish_time=0)
-		if sim.t < t: break # exit early if ended early
-		jupiter_xyz.append(sim.particles[5].xyz)
+   sim = rebound.Simulation()
+   sim.add("Solar System")
+   
+   # IMPORTANT: must enable server to start/stop retrieve simulations
+   sim.start_server(port=port)
+   
+   t_arr = np.linspace(0,  1e4,  100)
+   jupiter_xyz = []
 
-	return sim, sim_id, jupiter_xyz
+   for t in t_arr:
+      sim.integrate(t,  exact_finish_time=0)
+      if sim.t < t: break # exit early if ended early
+      jupiter_xyz.append(sim.particles[5].xyz)
+
+   return sim, sim_id, jupiter_xyz
 
 import threading
 

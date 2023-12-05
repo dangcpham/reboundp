@@ -1,3 +1,8 @@
+"""
+    author: Dang Pham
+    last modified: December 2023
+"""
+
 from typing import List
 
 def dim(x)->List[int]:

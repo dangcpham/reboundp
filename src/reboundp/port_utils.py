@@ -1,3 +1,8 @@
+"""
+    author: Dang Pham
+    last modified: December 2023
+"""
+
 import socket
 
 def first_available_port() -> int:
