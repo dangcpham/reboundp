@@ -2,3 +2,5 @@ build/*
 .coverage
 htmlcov/*
 html/*
+.vscode/*
+__pycache__/*
