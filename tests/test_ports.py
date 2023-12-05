@@ -91,8 +91,8 @@ class TestPorts(unittest.TestCase):
 
         # pause simulation after 1 second, fetch sim, then stop all sims
         sim = []
-        threading.Timer(1, lambda: [rebp.send_space(6301), 
-                                    sim.append(rebp.fetch_sim(6301)),
+        threading.Timer(1, lambda: [rebp.send_space(6311), 
+                                    sim.append(rebp.fetch_sim(6311)),
                                     rebp.end_all()]).start()
 
         # run all jobs
