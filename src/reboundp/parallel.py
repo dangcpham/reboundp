@@ -4,13 +4,14 @@
 """
 
 # Python standard library
-import time, os, warnings, urllib3, math, inspect, datetime
+import time, os, warnings, math, inspect, datetime
 from typing import List
 
 # Third-party libraries
 from joblib import Parallel, delayed
 import joblib.parallel
 import rebound
+import urllib3
 
 # Local imports
 from . import port_utils
@@ -248,7 +249,7 @@ class ReboundParallel():
 
     def fetch_sim(self, port:int)->rebound.Simulation:
         """ Fetch simulation object from `REBOUND` server at port.\n
-            Under the hood, this function uses `urllib3` to send a GET request to the server.
+            Under the hood, this function uses `urllib` to send a GET request to the server.
             Then, it loads the retrieved bytes data into a `rebound.Simulation` object.
 
             Parameters

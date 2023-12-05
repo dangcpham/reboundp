@@ -23,7 +23,7 @@ setuptools.setup(
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.8",
-    install_requires=["rebound>=4.0.0", "joblib"],
+    install_requires=["rebound>=4.0.0", "joblib", "urllib3"],
     extras_require = {
         "dashboard":  ["psutil", "flask", "numpy", "bokeh"]
     }
