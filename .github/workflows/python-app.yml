@@ -14,7 +14,6 @@ permissions:
 jobs:
   build:
     name: Python tests on ${{ matrix.os }} (${{ matrix.python-version }})
-    if: always()
     timeout-minutes: 10
 
     runs-on: ${{ matrix.os }}
@@ -24,6 +23,7 @@ jobs:
         os: [ubuntu-latest, macos-11]
 
     steps:
+    if: always()
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
