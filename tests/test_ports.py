@@ -195,7 +195,7 @@ class TestPorts(unittest.TestCase):
 
     def test_end_current(self):
         rebp = ReboundParallel(simfunc = setup_sim, cores=2, 
-                          port_buffer=1,
+                          port_buffer=2,
                           progressbar=False)
         jobs = np.arange(0, 4, 1)
 
@@ -220,9 +220,9 @@ class TestPorts(unittest.TestCase):
 
     def test_end_all(self):
         rebp = ReboundParallel(simfunc = setup_sim, cores=2, 
-                          port_buffer=1,
+                          port_buffer=2,
                           progressbar=False)
-        jobs = np.arange(0, 4, 1)
+        jobs = np.arange(0, 10, 1)
 
         # stop all sims after 0.5 second
         threading.Timer(0.5, lambda: [rebp.end_all()]).start()

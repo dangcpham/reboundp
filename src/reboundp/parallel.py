@@ -249,7 +249,7 @@ class ReboundParallel():
 
     def fetch_sim(self, port:int)->rebound.Simulation:
         """ Fetch simulation object from `REBOUND` server at port.\n
-            Under the hood, this function uses `urllib` to send a GET request to the server.
+            Under the hood, this function uses `urllib3` to send a GET request to the server.
             Then, it loads the retrieved bytes data into a `rebound.Simulation` object.
 
             Parameters
