@@ -36,7 +36,7 @@ class TestPorts(unittest.TestCase):
         open_ports = []
         threading.Timer(1, 
                 lambda: [open_ports.append(rebp.current_open_ports()), 
-                         rebp.end_all()]).start()
+                         rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
         rebp.run(jobs=jobs)
@@ -54,7 +54,7 @@ class TestPorts(unittest.TestCase):
         # fetch sim after 1 second, then stop all sims
         sim = []
         threading.Timer(1, lambda: [sim.append(rebp.fetch_sim(6201)),
-                                    rebp.end_all()]).start()
+                                    rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
         rebp.run(jobs=jobs)
@@ -75,7 +75,7 @@ class TestPorts(unittest.TestCase):
         sim = []
         threading.Timer(1, lambda: [rebp.pause_sim(6301), 
                                     sim.append(rebp.fetch_sim(6301)),
-                                    rebp.end_all()]).start()
+                                    rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
         rebp.run(jobs=jobs)
@@ -93,7 +93,7 @@ class TestPorts(unittest.TestCase):
         sim = []
         threading.Timer(1, lambda: [rebp.send_space(6311), 
                                     sim.append(rebp.fetch_sim(6311)),
-                                    rebp.end_all()]).start()
+                                    rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
         rebp.run(jobs=jobs)
@@ -112,7 +112,7 @@ class TestPorts(unittest.TestCase):
         threading.Timer(1, lambda: [rebp.pause_all(), 
                                     sim.append(rebp.fetch_sim(6401)),
                                     sim.append(rebp.fetch_sim(6402)),
-                                    rebp.end_all()]).start()
+                                    rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
         rebp.run(jobs=jobs)
@@ -132,7 +132,7 @@ class TestPorts(unittest.TestCase):
         threading.Timer(1, lambda: [rebp.pause_sim(6501), 
                                     rebp.start_sim(6501), 
                                     sim.append(rebp.fetch_sim(6501)),
-                                    rebp.end_all()]).start()
+                                    rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
         rebp.run(jobs=jobs)
@@ -152,7 +152,7 @@ class TestPorts(unittest.TestCase):
                                     rebp.start_all(), 
                                     sim.append(rebp.fetch_sim(6601)),
                                     sim.append(rebp.fetch_sim(6602)),
-                                    rebp.end_all()]).start()
+                                    rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
         rebp.run(jobs=jobs)
@@ -179,12 +179,12 @@ class TestPorts(unittest.TestCase):
     
     def test_send_q(self):
         rebp = ReboundParallel(simfunc = setup_sim, cores=1, 
-                          port_buffer=1, port0=6700,
+                          port_buffer=1, port0=6710,
                           progressbar=False)
         jobs = np.arange(0, 1, 1)
 
         # stop sim after 0.5 second
-        threading.Timer(0.5, lambda: [rebp.send_q(6701)]).start()
+        threading.Timer(0.5, lambda: [rebp.send_q(6711)]).start()
 
         # run all jobs
         result = rebp.run(jobs=jobs)
@@ -225,7 +225,7 @@ class TestPorts(unittest.TestCase):
         jobs = np.arange(0, 10, 1)
 
         # stop all sims after 0.5 second
-        threading.Timer(0.5, lambda: [rebp.end_all()]).start()
+        threading.Timer(0.5, lambda: [rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
         results = rebp.run(jobs=jobs)
