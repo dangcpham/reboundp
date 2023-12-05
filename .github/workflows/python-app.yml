@@ -5,9 +5,8 @@ name: reboundp (Python)
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    tags:
+      - test-required*
 
 permissions:
   contents: read
