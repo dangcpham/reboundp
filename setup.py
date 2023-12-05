@@ -5,15 +5,15 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="reboundp",
-    version="0.0.3",
+    version="0.0.4",
     author="Dang Pham",
     author_email="dang.pham@astro.utoronto.ca",
     description="A package for managing parallelized Python-based REBOUND instances",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="",
+    url="https://github.com/dangcpham/reboundp",
     project_urls={
-        "Bug Tracker": "",
+        "Bug Tracker": "https://github.com/dangcpham/reboundp/issues",
     },
     classifiers=[
         "Programming Language :: Python :: 3",

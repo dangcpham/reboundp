@@ -119,27 +119,36 @@ class TestInitialization(unittest.TestCase):
         # test that errors are raised for incorrect types
         
         # test cores arg
-        self.assertRaises(TypeError, lambda: ReboundParallel(simfunc = setup_sim, cores="Not an int"))
-        self.assertRaises(TypeError, lambda: ReboundParallel(simfunc = setup_sim, cores=0))
+        self.assertRaises(TypeError, lambda: ReboundParallel(
+            simfunc = setup_sim, cores="Not an int"))
+        self.assertRaises(TypeError, lambda: ReboundParallel(
+            simfunc = setup_sim, cores=0))
         
         # test progressbar arg
-        self.assertRaises(TypeError, lambda: ReboundParallel(simfunc = setup_sim, progressbar="No"))
+        self.assertRaises(TypeError, lambda: ReboundParallel(
+            simfunc = setup_sim, progressbar="No"))
         
         # test port buffer arg
-        self.assertRaises(TypeError, lambda: ReboundParallel(simfunc = setup_sim, progressbar=False, port_buffer="5"))
-        self.assertRaises(TypeError, lambda: ReboundParallel(simfunc = setup_sim, progressbar=False, port_buffer=0))
+        self.assertRaises(TypeError, lambda: ReboundParallel(
+            simfunc = setup_sim, progressbar=False, port_buffer="5"))
+        self.assertRaises(TypeError, lambda: ReboundParallel(
+            simfunc = setup_sim, progressbar=False, port_buffer=0))
 
         # test port0 arg
-        self.assertRaises(TypeError, lambda: ReboundParallel(simfunc = setup_sim, progressbar=False, port_buffer=5, port0="6000"))
-        self.assertRaises(TypeError, lambda: ReboundParallel(simfunc = setup_sim, progressbar=False, port_buffer=5, port0=600_000))
+        self.assertRaises(TypeError, lambda: ReboundParallel(
+            simfunc = setup_sim,progressbar=False,port_buffer=5,port0="6000"))
+        self.assertRaises(TypeError, lambda: ReboundParallel(
+            simfunc = setup_sim,progressbar=False,port_buffer=5,port0=600_000))
 
         # test simfunc arg
-        self.assertRaises(TypeError, lambda: ReboundParallel(simfunc = "not a function"))
+        self.assertRaises(TypeError, lambda: ReboundParallel(
+            simfunc = "not a function"))
 
         # wrong port location
         def simfunc2(sim_id, port):
             pass
-        self.assertRaises(TypeError, lambda: ReboundParallel(simfunc = simfunc2, progressbar=False, port_buffer=5, port0="6000"))
+        self.assertRaises(TypeError, lambda: ReboundParallel(
+            simfunc = simfunc2,progressbar=False,port_buffer=5,port0="6000"))
 
     def test_verify_before_run(self):
         # test validation of run jobs
@@ -243,10 +252,39 @@ class TestInitialization(unittest.TestCase):
 
         # test that results are returned for every job
         self.assertEqual(len(results), 10)
+    
+    def test_run_serial(self):
+        jobs = np.arange(0, 3, 1)
+        rebp = ReboundParallel(simfunc = setup_sim_noport, cores=1)
+        results = rebp.run(jobs=jobs)
+        results = results
+
+        # test that results are returned for every job
+        self.assertEqual(len(results), len(jobs))
+        
+        # check that progressbar and cores arguments are happy
+        jobs = np.arange(0, 3, 1)
+        rebp = ReboundParallel(simfunc=setup_sim_noport, cores=1, 
+                               progressbar=True)
+        results = rebp.run(jobs=jobs)
+        results = results
+
+        # test that results are returned for every job
+        self.assertEqual(len(results), len(jobs))
+        
+        # test with jobs as int
+        jobs = 3
+        rebp = ReboundParallel(simfunc=setup_sim_int, cores=1,
+                               progressbar=False)
+        results = rebp.run(jobs=jobs)
+        results = results
+
+        # test that results are returned for every job
+        self.assertEqual(len(results), jobs)
 
     def test_return(self):
         jobs = np.arange(0, 5, 1)
-        rebp = ReboundParallel(simfunc = setup_sim, cores=5, progressbar=True)
+        rebp = ReboundParallel(simfunc=setup_sim, cores=5, progressbar=True)
         results = rebp.run(jobs=jobs)
         results = results
 
@@ -267,7 +305,8 @@ class TestInitialization(unittest.TestCase):
         self.assertAlmostEqual(results[0][0].t, results[0][2][-1], 1)
 
         # test simulation output matches array (Jupiter xyz)
-        self.assertTrue(np.allclose(results[0][0].particles[5].xyz, results[0][-1][-1]))
+        self.assertTrue(np.allclose(results[0][0].particles[5].xyz, 
+                                    results[0][-1][-1]))
 
 if __name__ == "__main__":
     unittest.main()

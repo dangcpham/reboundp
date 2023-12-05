@@ -21,18 +21,24 @@ REB_STATUS = {-3: "paused", -2: "laststep", -1: "running", 0: "finished",
               1: "generic_error", 2: "no_particles", 3: "encounter",
               4: "escape", 5: "user", 6: "sigint", 7: "collision",}
 
+def print_progress(n_completed_tasks:int, joblib_n_jobs:int, joblib_t0:float):
+    progress = (n_completed_tasks+1) / joblib_n_jobs
+    time_elapsed = utils.time_format(time.time() - joblib_t0)
+    output = f"\rProgress: [{'■'*int(progress * 50):<50}] {(progress*100):.1f}% [{n_completed_tasks+1}/{joblib_n_jobs} Tasks] [{time_elapsed}]"
+    print(output, end="", flush=True)
+
+    if n_completed_tasks+1 >= joblib_n_jobs:
+        time_started = datetime.datetime.fromtimestamp(joblib_t0).strftime("on %Y-%m-%d at %H:%M:%S")
+        print(f"\nFinished running {joblib_n_jobs} tasks. Started {time_started}. Walltime: {utils.time_format(time.time() - joblib_t0)}. \n")
+
 class TimedBatchCompletionCallBack(joblib.parallel.BatchCompletionCallBack):
-    """ Custom callback for `joblib.parallel.Parallel` that prints progress to `stdout`."""    
+    """ Custom callback for `joblib.parallel.Parallel` that prints progress to `stdout`."""
+     
     def __call__(self, *args, **kwargs):
         if self.parallel.progressbar:
-            progress = (self.parallel.n_completed_tasks+1) / self.parallel.joblib_n_jobs
-            time_elapsed = utils.time_format(time.time() - self.parallel.joblib_t0)
-            output = f"\rProgress: [{'='*int(progress * 50):<50}] {(progress*100):.1f}% [{self.parallel.n_completed_tasks+1}/{self.parallel.joblib_n_jobs} Tasks] [{time_elapsed}]"
-            print(output, end="", flush=True)
-
-            if self.parallel.n_completed_tasks+1 >= self.parallel.joblib_n_jobs:
-                time_started = datetime.datetime.fromtimestamp(self.parallel.joblib_t0).strftime("%Y-%m-%d %Hh%Mm%Ss")
-                print(f"\nFinished running {self.parallel.joblib_n_jobs} tasks. Started at {time_started}. Walltime: {utils.time_format(time.time() - self.parallel.joblib_t0)}. \n")
+            print_progress(self.parallel.n_completed_tasks,
+                           self.parallel.joblib_n_jobs, 
+                           self.parallel.joblib_t0)
 
         return super().__call__(*args, **kwargs)
 
@@ -43,7 +49,7 @@ class ReboundParallel():
     """
     def __init__(self, simfunc:callable, 
                  cores:int=None, progressbar:bool=False, 
-                 port_buffer:int=5, port0:int=None):
+                 port_buffer:int=10, port0:int=None):
         """ Initialize `REBOUNDParallel` object.
 
             Parameters
@@ -54,9 +60,9 @@ class ReboundParallel():
                 -------
                 Acceptable signatures for `simfunc`:
 
-                1. `simfunc()`                   --- function takes no argument, **cannot** access sims while running
+                1. `simfunc()`                       --- function takes no argument, **cannot** access sims while running
                 2. `simfunc(arg1, arg2, ...)`        --- function takes argument(s), **cannot** access sims while running
-                3. `simfunc(port)`               --- function takes no argument, can access sims while running
+                3. `simfunc(port)`                   --- function takes no argument, can access sims while running
                 4. `simfunc(port, arg1, arg2, ...)`  --- function takes argument(s), can access sims while running
                 -------
 
@@ -67,7 +73,8 @@ class ReboundParallel():
                 Whether to print a progress bar to stdout. Default is `False`.
             port_buffer : int, optional
                 A buffer (we reserve more ports than we need) to avoid overusing ports.
-                Default is `5`.
+                Recommend to use a number higher than 5 to make sure ports are not overused.
+                Default is `10`.
             port0 : int, optional
                 First port to use. Must be a positive, non-zero integer, between `1024` and `65535`.
                 Default is `None`, which will automatically determine and use first available port..
@@ -115,7 +122,8 @@ class ReboundParallel():
         else:
             simfunc_port = True
 
-        if simfunc_port == True and list(inspect.signature(self.simfunc).parameters).index("port") != 0:
+        if (simfunc_port == True and 
+            list(inspect.signature(self.simfunc).parameters).index("port") != 0):
             raise TypeError(f"port must be the first argument in {self.simfunc.__name__}")
 
         return simfunc_port
@@ -262,7 +270,8 @@ class ReboundParallel():
             sim : rebound.Simulation
                 Simulation object from `REBOUND` server at port
         """
-        reb_request = urllib3.request("GET", f"{self.server_path}:{port}/simulation")
+        reb_request = urllib3.request("GET", 
+                                      f"{self.server_path}:{port}/simulation")
         sim = rebound.Simulation(reb_request.data)
 
         return sim
@@ -317,9 +326,9 @@ class ReboundParallel():
         for port in self.current_open_ports():
             self.end_sim(port)
 
-    def end_all(self, sleep_timer:float=0.05, batch_buffer:int=5):
+    def end_all(self, sleep_timer:float=0.05, batch_buffer:int=10):
         """ End all simulations currently available on ports, repeat until all sims have ended.
-            Will wait for 5 times the number of batches it took to run the simulations.
+            Will wait for `batch_buffer` times the number of batches it took to run the simulations.
             (This is a heuristic to ensure that all sims end.)
 
             Parameters
@@ -327,7 +336,7 @@ class ReboundParallel():
             sleep_timer : float, optional
                 Time to sleep between checking if all sims have ended. Default is 0.01.
             batch_buffer : int, optional
-                Batch buffer to ensure that all sims are ended. Default is 5.
+                Batch buffer to ensure that all sims are ended. Default is 10.
         """
         nbatches = int(math.ceil(self.njobs / self.cores)) * batch_buffer
         warnings.warn("Ending all tasks ...", UserWarning)
@@ -335,7 +344,8 @@ class ReboundParallel():
             self.end_all_current_sims()
             time.sleep(sleep_timer)
 
-    def run(self, jobs, cores:int=None, progressbar:bool=None, *joblib_args, **joblib_kwargs)->List:
+    def run(self, jobs, cores:int=None, progressbar:bool=None, 
+            *joblib_args, **joblib_kwargs)->List:
         """ Run jobs in parallel.
 
             Parameters
@@ -373,33 +383,65 @@ class ReboundParallel():
         # handle cores and progressbar arguments
         if cores is not None: self.cores = cores
         if progressbar is not None: self.progressbar = progressbar
+        if self.progressbar and self.cores == 1: 
+            print("Running in serial mode.")
+        elif self.progressbar and self.cores > 1:
+            print(f"Running in parallel mode with {self.cores} cores.")
+        
 
         # assign ports to jobs
         job_list = list(range(0, self.njobs))
         port1 = self.port0 + 1
         core_buffer = self.cores * self.port_buffer
-        self.ports_array = [(port1 + (port % core_buffer)) for port in job_list]
+        self.ports_array = [(port1 + (port%core_buffer)) for port in job_list]
 
         # validate before running
         self.validate_init()
         self.verify_before_run()
 
-        # run jobs in parallel
-        joblib.parallel.BatchCompletionCallBack = TimedBatchCompletionCallBack
-        with Parallel(n_jobs=self.cores, *joblib_args, **joblib_kwargs) as parallel:
-            parallel.joblib_n_jobs = self.njobs
-            parallel.progressbar = self.progressbar
-            parallel.joblib_t0 = time.time()
+        # track progress
+        __n_completed_tasks = 0
+        __t0 = time.time()
+        if self.progressbar: print_progress(__n_completed_tasks, self.njobs, __t0)
 
-            if type(jobs) == int:
-                results = parallel(delayed(self.simfunc)() for i in range(self.njobs))
-            else:
-                if self.simfunc_port:
-                    results = parallel(delayed(self.simfunc)(self.ports_array[i], *jobs[i]) 
-                                    for i in range(self.njobs))
+        if self.cores == 1:
+            # output list
+            results = []
+
+            for i in range(self.njobs):
+                if type(jobs) == int:
+                    results.append(self.simfunc())
                 else:
-                    results = parallel(delayed(self.simfunc)(*jobs[i])
-                                    for i in range(self.njobs))
+                    if self.simfunc_port:
+                        results.append(self.simfunc(self.ports_array[i],
+                                                    *jobs[i]))
+                    else:
+                        results.append(self.simfunc(*jobs[i]))
+                
+                if __n_completed_tasks+1 < self.njobs:
+                    print_progress(__n_completed_tasks+1, self.njobs, __t0)
+                __n_completed_tasks += 1
+        else:
+            # run jobs in parallel
+            joblib.parallel.BatchCompletionCallBack = TimedBatchCompletionCallBack
+            with Parallel(n_jobs=self.cores, 
+                          *joblib_args, **joblib_kwargs) as parallel:
+                # track progress
+                parallel.joblib_n_jobs = self.njobs
+                parallel.progressbar = self.progressbar
+                parallel.joblib_t0 = __t0
+
+                if type(jobs) == int:
+                    results = parallel(delayed(self.simfunc)() 
+                                       for i in range(self.njobs))
+                else:
+                    if self.simfunc_port:
+                        results = parallel(delayed(self.simfunc)(
+                            self.ports_array[i], *jobs[i]) 
+                            for i in range(self.njobs))
+                    else:
+                        results = parallel(delayed(self.simfunc)(*jobs[i])
+                                        for i in range(self.njobs))
 
         self.results = results
         return results

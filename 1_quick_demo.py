@@ -13,10 +13,12 @@ def setup_sim(ecc):
     xyz = sim.particles[1].xyz 
     return sim, ecc, xyz
 
-# set up sims to be run in parallel, use all available cores
-ecc_arr = np.linspace(0, 0.999, 300)
-# run
+# set up sims to be run in parallel
+ecc_arr = np.linspace(0, 0.999, 200)
+# run, use all available cores
 results = setup_sim.run(jobs=ecc_arr, cores=None, progressbar=True)
+# run, use 1 core
+results = setup_sim.run(jobs=ecc_arr, cores=1, progressbar=True)
 
 for result in results:
     sim, ecc, xyz = result
