@@ -35,16 +35,7 @@ jobs:
         pip install numpy
     - name: Build package
       run: pip install -e .[port]
-    - name: Unittests to check general functionalities and port features
+    - name: Run All Unittests
       run: |
-        python -m unittest discover -s tests/ -v
-        python -m unittest tests/test_environment/test_features_port.py -v
-    - name: Unittests for base installation
-      run: |
-        pip uninstall --y rebound urllib3
-        python -m unittest tests/test_environment/test_features_base.py -v
-    - name: Unittests to check for REBOUND 3 compatability
-      run: |
-        pip uninstall --y rebound
-        pip install 'rebound<4.0.0'
-        python -m unittest tests/test_environment/test_features_rebound3.py -v
+        cd tests/
+        bash unittest_run_all.sh
