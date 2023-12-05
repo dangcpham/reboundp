@@ -2,7 +2,7 @@
 
 #### A package to parallelize and manage parallelized Python `REBOUND` instances
 ---
-**Version 0.0.1**
+**Version 0.0.3**
 
  - [x] Initiate parallel `REBOUND` instances
  - [x] Progressbar
