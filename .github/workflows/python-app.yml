@@ -33,7 +33,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install numpy flake8 pytest
     - name: Build package
-      run: pip install -e .
+      run: pip install -e .[port]
     - name: Output package contents
       run: |
         pip show reboundp -vf

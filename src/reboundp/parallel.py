@@ -4,14 +4,34 @@
 """
 
 # Python standard library
-import time, os, warnings, math, inspect, datetime
+import time, os, warnings, math, inspect, datetime, distutils
 from typing import List
 
 # Third-party libraries
 from joblib import Parallel, delayed
 import joblib.parallel
-import rebound
-import urllib3
+
+# Check which extra features are available
+global FEATURES
+FEATURES = []
+
+try:
+    import rebound
+    # only rebound >= 4.0.0 has the webserver feature
+    if int(rebound.__version__.split(".")[0]) < 4: raise ImportError
+    import urllib3
+    FEATURES.append("port")
+except ImportError:
+    pass
+
+# try:
+#     import psutil
+#     import flask
+#     import numpy as np
+#     import bokeh
+#     FEATURES.append("dashboard")
+# except ImportError:
+#     pass
 
 # Local imports
 from . import port_utils
@@ -239,9 +259,12 @@ class ReboundParallel():
             port : int
                 Port of `REBOUND` server to send spacebar command to
         """
-        urllib3.request(method = "GET",
-                        url = f"{self.server_path}:{port}/keyboard/32",
-                        retries = False)
+        if "port" in FEATURES:
+            urllib3.request(method = "GET",
+                            url = f"{self.server_path}:{port}/keyboard/32",
+                            retries = False)
+        else:
+            raise ImportError("Please install reboundp with pip install reboundp[port] to use this function.")
 
     def send_q(self, port:int):
         """ Send q command to `REBOUND` server at port to end simulation.
@@ -251,11 +274,14 @@ class ReboundParallel():
             port : int
                 Port of `REBOUND` server to send q command to
         """
-        urllib3.request(method = "GET",
-                        url = f"{self.server_path}:{port}/keyboard/81",
-                        retries = 1)
+        if "port" in FEATURES:
+            urllib3.request(method = "GET",
+                            url = f"{self.server_path}:{port}/keyboard/81",
+                            retries = 1)
+        else:
+            raise ImportError("Please install reboundp with pip install reboundp[port] to use this function.")
 
-    def fetch_sim(self, port:int)->rebound.Simulation:
+    def fetch_sim(self, port:int):
         """ Fetch simulation object from `REBOUND` server at port.\n
             Under the hood, this function uses `urllib3` to send a GET request to the server.
             Then, it loads the retrieved bytes data into a `rebound.Simulation` object.
@@ -270,11 +296,14 @@ class ReboundParallel():
             sim : rebound.Simulation
                 Simulation object from `REBOUND` server at port
         """
-        reb_request = urllib3.request("GET", 
-                                      f"{self.server_path}:{port}/simulation")
-        sim = rebound.Simulation(reb_request.data)
+        if "port" in FEATURES:
+            reb_request = urllib3.request("GET", 
+                                        f"{self.server_path}:{port}/simulation")
+            sim = rebound.Simulation(reb_request.data)
 
-        return sim
+            return sim
+        else:
+            raise ImportError("Please install reboundp with pip install reboundp[port] to use this function.")
 
     def pause_sim(self, port:int):
         """ Pause simulation at port.
@@ -316,10 +345,13 @@ class ReboundParallel():
             port : int
                 Port of `REBOUND` server to end simulation
         """
-        try:
-            self.send_q(port)
-        except urllib3.exceptions.MaxRetryError:
-            pass
+        if "port" in FEATURES:
+            try:
+                self.send_q(port)
+            except urllib3.exceptions.MaxRetryError:
+                pass
+        else:
+            raise ImportError("Please install reboundp with pip install reboundp[port] to use this function.")
 
     def end_all_current_sims(self):
         """ End all simulations available on REBOUND ports."""
