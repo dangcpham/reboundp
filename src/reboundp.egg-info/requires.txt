@@ -1,0 +1,8 @@
+rebound>=4.0.0
+joblib
+
+[dashboard]
+psutil
+flask
+numpy
+bokeh

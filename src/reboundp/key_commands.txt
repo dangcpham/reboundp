@@ -1,0 +1,30 @@
+Key commands
+
+h           [show/hide]
+q           [quit]
+(space)     [pause/resume]
+d           [pause visualization]
+s           [spheres toggle]
+g           [ghost boxes]
+r           [reset camera]
+x           [move to coordinate system on particle]
+c           [clear screen after each step]
+m           [multisampling]
+w           [wires]
+t           [info box]
+
+
+// Possible return values of of rebound_integrate
+enum REB_STATUS {
+    REB_STATUS_PAUSED = -3,       // Simulation is paused by visualization.
+    REB_STATUS_LAST_STEP = -2,    // Current timestep is the last one. Needed to ensure that t=tmax exactly.
+    REB_STATUS_RUNNING = -1,      // Simulation is current running, no error occurred.
+    REB_STATUS_SUCCESS = 0,       // Integration finished successfully.
+    REB_STATUS_GENERIC_ERROR = 1, // A generic error occurred and the integration was not successful.
+    REB_STATUS_NO_PARTICLES = 2,  // The integration ends early because no particles are left in the simulation.
+    REB_STATUS_ENCOUNTER = 3,     // The integration ends early because two particles had a close encounter (see exit_min_distance)
+    REB_STATUS_ESCAPE = 4,        // The integration ends early because a particle escaped (see exit_max_distance)  
+    REB_STATUS_USER = 5,          // User caused exit, simulation did not finish successfully.
+    REB_STATUS_SIGINT = 6,        // SIGINT received. Simulation stopped.
+    REB_STATUS_COLLISION = 7,     // The integration ends early because two particles collided. 
+};
