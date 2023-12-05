@@ -85,7 +85,7 @@ class TestPorts(unittest.TestCase):
 
     def test_send_space(self):
         rebp = ReboundParallel(simfunc = setup_sim, cores=1, 
-                          port_buffer=1, port0=6300,
+                          port_buffer=1, port0=6310,
                           progressbar=False)
         jobs = np.arange(0, 1, 1)
 
