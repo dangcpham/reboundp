@@ -39,7 +39,7 @@ jobs:
       uses: schneegans/dynamic-badges-action@v1.7.0
       with:
         auth: ${{ secrets.GIST_BADGE_SECRET }}
-        gistID: https://gist.github.com/dangcpham/6807845416d284aea12220200073b4ed
+        gistID: 6807845416d284aea12220200073b4ed
         filename: test.json # Use test.svg if you want to use the SVG mode.
         label: Coverage
         message: ${{ env.total }}
