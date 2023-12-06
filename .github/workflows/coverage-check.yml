@@ -30,10 +30,22 @@ jobs:
     - name: Test code coverage
       run: |
         cd tests/
-        bash unittest_coverage.sh
-        python -m coverage combine
-        echo "total=$(python -m coverage report --format=total)"
-        echo "total=$(python -m coverage report --format=total)" >> $GITHUB_ENV
+  
+        pip uninstall --y urllib3 rebound
+        coverage run -m -a unittest test_environment/test_features_base.py -v
+
+        pip install 'rebound<4.0.0'
+        coverage run -m -a unittest test_environment/test_features_rebound3.py -v
+        pip uninstall --y rebound
+
+        pip install urllib3 'rebound>=4.0.0'
+        coverage run -m -a unittest discover -s . -v
+        coverage run -m -a unittest test_environment/test_features_port.py -v
+
+        coverage html -d coverage_report
+
+        echo "total=$(coverage report --format=total)"
+        echo "total=$(coverage report --format=total)" >> $GITHUB_ENV
     - name: Create Badge
       uses: schneegans/dynamic-badges-action@v1.7.0
       with:
