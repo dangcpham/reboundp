@@ -31,9 +31,10 @@ jobs:
       run: |
         cd tests/
         bash unittest_coverage.sh
-    - name: "Get total code coverage"
+    - name: "Get total"
+      id: total
       run: |
-        echo "total=$(python -m coverage report --format=total)" >> $GITHUB_ENV
+        echo "total=$(python -m coverage report --format=total)" >> $GITHUB_OUTPUT
     - name: Create Badge
       uses: schneegans/dynamic-badges-action@v1.7.0
       with:
@@ -44,5 +45,5 @@ jobs:
         message: ${{ env.total }}
         minColorRange: 60
         maxColorRange: 100
-        valColorRange: $(python -m coverage report --format=total)
+        valColorRange: ${{ env.total }}
 
