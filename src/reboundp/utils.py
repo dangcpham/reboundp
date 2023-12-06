@@ -1,7 +1,5 @@
-"""
-    author: Dang Pham
-    last modified: December 2023
-"""
+# author: Dang Pham
+# last modified: December 2023
 
 from typing import List
 

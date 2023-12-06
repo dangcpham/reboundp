@@ -1,7 +1,5 @@
-"""
-    author: Dang Pham
-    last modified: December 2023
-"""
+# author: Dang Pham
+# last modified: December 2023
 
 # Python standard library
 import time, os, warnings, math, inspect, datetime
