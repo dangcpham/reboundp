@@ -1,6 +1,8 @@
 ##  REBOUNDp(arallel)
 
 #### A package to parallelize and manage parallelized Python `REBOUND` instances
+
+![badge](https://gist.githubusercontent.com/dangcpham/6807845416d284aea12220200073b4ed/raw/483b964bf3526932d5e24f94f58da623c8c1f0b2/test.svg)
 ---
 **Version 0.0.3**
 
