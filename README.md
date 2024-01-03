@@ -11,11 +11,11 @@
  - [x] Access `REBOUND` ports
  - [x] Pause, unpause, and stop parallel instances
  - [x] Fetch simulations from ports
- - [ ] Separate server to manage parallelization
+ - [ ] Separate webserver to manage separate parallel instances
  - [ ] Dashboard showing CPU usage
  - [ ] Dashboard visualizing running simulations
 ---
-**Quick start**: run a simulation in parallel
+**Quick start**: run a simulation in parallel over different parameters (eccentricity in this case).
 ```
 from reboundp import ReboundParallel
 
@@ -36,15 +36,13 @@ This comes with a nice progressbar:
 > Progress: [==================================================] 100.0% [300/300 Tasks] [13.5s]
 ```
 ---
-**Another usage**: run simulations many times.
+**Another usage**: run the same simulation job many times (no parameter).
 ```
-from reboundp import ReboundParallel
-
 @ReboundParallel
-def setup_sim(ecc):
+def setup_sim():
    sim = rebound.Simulation()
    sim.add(m=1)
-   sim.add(m=1e-3,  a=1,  e=ecc)
+   sim.add(m=1e-3,  a=1,  e=0.1)
    sim.integrate(1e5)
    return sim
 
@@ -52,7 +50,7 @@ def setup_sim(ecc):
 results = setup_sim.run(jobs=10, cores=10)
 ```
 ---
-***Advanded usage***: run a simulation in parallel, but now we can start/stop/retrieve simulation.
+***Advanded usage***: run a simulation in parallel, but now we can start/stop/retrieve simulation. This will be much easier in future versions with a separate webserver.
 ```
 def setup_sim(port, _):
    sim = rebound.Simulation()
