@@ -1,11 +1,10 @@
 ##  REBOUNDp(arallel)
 
-#### A package to parallelize and manage parallelized Python `REBOUND` instances
+#### A package to parallelize and manage parallelized Python [REBOUND](https://github.com/hannorein/rebound) instances
 
 ![badge](https://gist.githubusercontent.com/dangcpham/6807845416d284aea12220200073b4ed/raw/483b964bf3526932d5e24f94f58da623c8c1f0b2/test.svg)
 ---
 **Version 0.0.3**
-
  - [x] Initiate parallel `REBOUND` instances
  - [x] Progressbar
  - [x] Access `REBOUND` ports
@@ -15,6 +14,10 @@
  - [ ] Dashboard showing CPU usage
  - [ ] Dashboard visualizing running simulations
 ---
+**Dependencies**: [joblib](https://github.com/joblib/joblib)
+
+**Installation**: clone this repository, then `pip install -e .` from within the cloned repo. `pip` soon...
+
 **Quick start**: run a simulation in parallel over different parameters (eccentricity in this case).
 ```
 from reboundp import ReboundParallel
