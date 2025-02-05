@@ -17,7 +17,8 @@ class TestFeaturesBase(unittest.TestCase):
                 rebp.check_port_feature()
 
         threading.Timer(0.5, check_and_assert).start()
-        rebp.run(jobs=10)
+        rebp.init_run(jobs=10)
+        rebp.run()
 
 if __name__ == "__main__":
     unittest.main()

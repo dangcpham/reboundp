@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REBOUND Simulations</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- <header>
+        <h1>Rebound Simulations</h1>
+    </header> -->
+    <script>
+        async function updateStatus() {
+            const response = await fetch('/status');
+            const data = await response.json();
+            document.getElementById('completed').textContent = data.summary.completed;
+            document.getElementById('total').textContent = data.summary.total;
+            document.getElementById('running-count').textContent = data.summary.running;
+            document.getElementById('progress-bar').value = (data.summary.completed / data.summary.total) * 100;
+
+            if (data.summary.running > 0) {
+                document.getElementById('start-all-simulations').disabled = true;
+                document.getElementById('pause-all-simulations').disabled = false;
+            } else {
+                document.getElementById('start-all-simulations').disabled = false;
+                document.getElementById('pause-all-simulations').disabled = true;
+            }
+            
+            const progressBody = document.getElementById('progress-body');
+            progressBody.innerHTML = '';
+            for (let key in data.sims) {
+                const row = document.createElement('tr');
+                if (data.sims[key].status === 'running') {
+                    row.innerHTML = `<td>${key}</td><td>${data.sims[key].simtime}</td><td>${data.sims[key].walltime}</td>
+                                 <td>
+                                 <a href="/pause_sim/${key}" class="pause-btn" onClick="updateStatus()">Pause</a> | 
+                                 <a href="http://localhost:${key}">View</a> | <a href="/fetch_sim/${key}">Download</a> | 
+                                 <a href="/end_sim/${key}">End</a>
+                                 </td>`;
+                } else {
+                    row.innerHTML = `<td>${key}</td><td>${data.sims[key].simtime}</td><td>${data.sims[key].walltime}</td>
+                                 <td>
+                                 <a href="/start_sim/${key}" class="start-btn" onClick="updateStatus()"">Start</a> | 
+                                 <a href="http://localhost:${key}">View</a> | <a href="/fetch_sim/${key}">Download</a> | 
+                                 <a href="/end_sim/${key}">End</a>
+                                 </td>`;
+                }
+                
+                progressBody.appendChild(row);
+            }
+        }
+        updateStatus()
+    </script>
+    <main>
+        <section id="simulation-controls">
+            <button id="start-all-simulations">Start All Simulations</button>
+            <button id="pause-all-simulations">Pause All Simulations</button>
+            <button id="end-all-simulations">End All Simulations</button>
+        </section>
+        <section id="simulation-status">
+            <h2>Status</h2>
+            <div id="status-container">
+                <p>Progress: <span id="completed"></span> / <span id="total"></span></p>
+                <p><progress id="progress-bar" value="0" max="100"></progress></p>
+                <p>Currently running <span id="running-count">0</span> simulations</p>
+            </div>
+        </section>
+        <section id="current-sims">
+            <h2>Currently running simulations</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Simulation port</th>
+                        <th>Simulation time</th>
+                        <th>Walltime (s)</th>
+                    </tr>
+                </thead>
+                <tbody id="progress-body">
+                </tbody>
+            </table>
+        </section>
+    </main>
+    <script>
+        document.getElementById('start-all-simulations').addEventListener('click', async () => {
+            await fetch('/start_all', { method: 'POST' });
+            document.getElementById('start-all-simulations').disabled = true;
+            document.getElementById('pause-all-simulations').disabled = false;
+            updateStatus();
+        });
+        document.getElementById('pause-all-simulations').addEventListener('click', async () => {
+            await fetch('/pause_all', { method: 'POST' });
+            document.getElementById('start-all-simulations').disabled = false;
+            document.getElementById('pause-all-simulations').disabled = true;
+            updateStatus();
+        });
+        document.getElementById('end-all-simulations').addEventListener('click', async () => {
+            await fetch('/end_all', { method: 'POST' });
+            document.getElementById('start-all-simulations').disabled = false;
+            document.getElementById('pause-all-simulations').disabled = false;
+            updateStatus();
+        });
+        
+        setInterval(updateStatus, 3000);
+    </script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 # last modified: December 2023
 
 # Python standard library
-import time, os, warnings, math, inspect, datetime
+import time, os, warnings, math, inspect, datetime, logging, tempfile, webbrowser, threading
 from typing import List
 
 # Third-party libraries
@@ -13,8 +13,10 @@ import joblib.parallel
 global FEATURES
 FEATURES = []
 
+
+import rebound
+
 try:
-    import rebound
     # only rebound >= 4.0.0 has the webserver feature
     if int(rebound.__version__.split(".")[0]) < 4: raise ImportError
     import urllib3
@@ -22,14 +24,12 @@ try:
 except ImportError:
     pass
 
-# try:
-#     import psutil
-#     import flask
-#     import numpy as np
-#     import bokeh
-#     FEATURES.append("dashboard")
-# except ImportError:
-#     pass
+try:
+    import flask
+    temp_dir = tempfile.TemporaryDirectory()
+    FEATURES.append("dashboard")
+except ImportError:
+    pass
 
 # Local imports
 from . import port_utils
@@ -67,7 +67,7 @@ class ReboundParallel():
     """
     def __init__(self, simfunc:callable, 
                  cores:int=None, progressbar:bool=False, 
-                 port_buffer:int=10, port0:int=None):
+                 port_buffer:int=50, port0:int=None):
         """ Initialize `REBOUNDParallel` object.
 
             Parameters
@@ -100,6 +100,7 @@ class ReboundParallel():
         self.features = FEATURES
         self.cpu_count = os.cpu_count()
         self.simfunc = simfunc
+        self.parallel = None
 
         # get properties of simfunc
         self.simfunc_port = self.simfunc_check()
@@ -109,6 +110,7 @@ class ReboundParallel():
             self.cores = self.cpu_count - 1
         else:
             self.cores = cores
+        self.__serial_n_completed_tasks = 0.
 
         # port things
         self.port_buffer = port_buffer
@@ -239,7 +241,144 @@ class ReboundParallel():
         """
         if "port" not in self.features:
             raise ImportError("Please install reboundp with pip install reboundp[port] to use this function.")
+        return True
+
+    def check_web_feature(self):
+        """ Check if dashboard webserver feature is available.
+            Raises ImportError if web feature is not available.
+        """
+        if "dashboard" not in self.features:
+            raise ImportError("Please install reboundp with pip install reboundp[dashboard] to use this function.")
+        return True
+
     
+    def webserver_start(self):
+        # open browser
+        threading.Timer(2, webbrowser.open, args=[f"http://localhost:8001"]).start()
+        print("Starting dashboard webserver...opening web browser at http://localhost:8001")
+        
+        
+        # TEMPLATE DIRECTORY
+        tmp = os.path.dirname(os.path.abspath(__file__))
+        srcdir = os.path.abspath(os.path.join(tmp, os.pardir))
+        self.webapp = flask.Flask(__name__, 
+                                  static_url_path='', 
+                                  static_folder=f"{srcdir}/web_files/static",
+                                  template_folder=f"{srcdir}/web_files")
+
+        # disable logging
+        log = logging.getLogger('werkzeug')
+        log.disabled = True
+
+        # ROUTING
+        # self.webapp.url_for('static', filename='style.css')
+        # main dashboard
+        self.webapp.route("/", 
+                          methods=['get'])(self.hello_world)
+        # status of all sims
+        self.webapp.route("/status",
+                          methods=['get'])(self.web_sim_status)
+        # fetch sim to download
+        self.webapp.route("/fetch_sim/<int:port>",
+                          methods=['get'])(self.web_fetch_sim)
+
+        # pause
+        self.webapp.route("/pause_all",
+                          methods=['post'])(self.web_pause_all)
+        self.webapp.route("/pause_sim/<int:port>",
+                          methods=['get'])(self.web_pause_sim)
+
+        # end
+        self.webapp.route("/end_sim/<int:port>", 
+                          methods=['get'])(self.web_end_sim) 
+        self.webapp.route("/end_all_current", 
+                          methods=['post'])(self.web_end_all_current_sims)
+        self.webapp.route("/end_all", 
+                          methods=['post'])(self.web_end_all)
+
+        #start
+        self.webapp.route("/start_sim/<int:port>",
+                          methods=['get'])(self.web_start_sim)
+        self.webapp.route("/start_all",
+                            methods=['post'])(self.web_start_all)
+
+        # START SERVER
+        self.webapp.run(host='0.0.0.0', port=8001)
+    
+    def hello_world(self):
+        return flask.render_template(f'index.html')
+
+    def web_sim_status(self):
+        open_ports = self.current_open_ports()
+        sim_list = {}
+        n_running = 0
+        for port in open_ports:
+            try:
+                _sim = self.fetch_sim(port)
+                sim_list[str(port)] = {"simtime": _sim.t, "walltime": _sim.walltime, "status": REB_STATUS[_sim._status]}
+                n_running += 1
+            except urllib3.exceptions.MaxRetryError:
+                pass
+
+        sim_status = {}
+        sim_status = {"total": self.njobs,
+                      "cores": self.cores}
+
+        if self.parallel is None:
+            sim_status["completed"] = 0
+            if self.cores == 1:
+                sim_status["completed"] = self.__serial_n_completed_tasks
+        else:
+            sim_status["completed"] = self.parallel.n_completed_tasks
+        sim_status["running"] = n_running
+
+        all_sims_status = {}
+        all_sims_status["summary"] = sim_status
+        all_sims_status["sims"] = sim_list
+
+        return flask.jsonify(all_sims_status)
+
+    def web_fetch_sim(self, port:int):
+        try:
+            sim = self.fetch_sim(port)
+            tmpfilepath = os.path.join(temp_dir.name, f"{port}.bin")
+            sim.save_to_file(tmpfilepath)
+            return flask.send_file(tmpfilepath, 
+                                   mimetype="application/octet-stream")
+        except urllib3.exceptions.MaxRetryError:
+            return '', 400
+
+    def web_start_sim(self, port:int):
+        self.start_sim(port)
+        return '', 204
+
+    def web_start_all(self):
+        if self.current_open_ports() == []:
+            self.run()
+        else:
+            self.start_all()
+        return '', 204
+
+    def web_pause_sim(self, port:int):
+        self.pause_sim(port)
+        return '', 204
+
+    def web_pause_all(self):
+        self.pause_all()
+        return '', 204
+
+    def web_end_sim(self, port:int):
+        self.end_sim(port)
+        return '', 204
+
+    def web_end_all_current_sims(self):
+        self.end_all_current_sims()
+        return '', 204
+
+    def web_end_all(self):
+        self.end_all()
+        return '', 204
+
     def current_open_ports(self)->List[int]:
         """ Get list of ports currently in use by `REBOUND` servers.
 
@@ -313,8 +452,11 @@ class ReboundParallel():
             port : int
                 Port of `REBOUND` server to pause simulation
         """
-        if REB_STATUS[self.fetch_sim(port)._status] == "running":
-            self.send_space(port)
+        try:
+            if REB_STATUS[self.fetch_sim(port)._status] == "running":
+                self.send_space(port)
+        except urllib3.exceptions.MaxRetryError:
+            pass
 
     def pause_all(self):
         """ Pause all simulations available on ports."""
@@ -374,10 +516,9 @@ class ReboundParallel():
             self.end_all_current_sims()
             time.sleep(sleep_timer)
 
-    def run(self, jobs, cores:int=None, progressbar:bool=None, 
-            *joblib_args, **joblib_kwargs)->List:
-        """ Run jobs in parallel.
-
+    def init_run(self, jobs, cores:int=None, progressbar:bool=None, start_webserver:bool=False):
+        """ Initialize jobs to run in parallel.
+        
             Parameters
             ----------
             jobs : iterable (int, list or numpy array. If int, must be positive. If iterable, 1 or 2 dimensional.)
@@ -394,16 +535,16 @@ class ReboundParallel():
             progressbar : bool, optional
                 Whether to print a progress bar to stdout. 
                 If not set, will use value from initialization (default False).
-            *joblib_args : optional
-                Additional arguments to pass to joblib.Parallel
-            **joblib_kwargs : optional
-                Additional keyword arguments to pass to joblib.Parallel
+            start_webserver : bool, optional
+                Whether to start the dashboard webserver. Default is False.
 
             Returns
             -------
-            results : List
-                List of results from running jobs in parallel        
+            init_results : bool
+                Whether initialization was successful
         """
+        self.webserver = start_webserver
+        
         # reset before running
         self.reset_run()
 
@@ -417,61 +558,78 @@ class ReboundParallel():
             print("Running in serial mode.")
         elif self.progressbar and self.cores > 1:
             print(f"Running in parallel mode with {self.cores} cores.")
-        
 
         # assign ports to jobs
         job_list = list(range(0, self.njobs))
         port1 = self.port0 + 1
         core_buffer = self.cores * self.port_buffer
         self.ports_array = [(port1 + (port%core_buffer)) for port in job_list]
+        self.jobs = jobs
 
-        # validate before running
+        # start webserver
+        if self.check_web_feature() and self.webserver: self.webserver_start()
+
+        # validate
         self.validate_init()
-        self.verify_before_run()
+    
+    def run(self, *joblib_args, **joblib_kwargs)->List:
+        """ Run jobs in parallel.
 
+            Parameters
+            ----------
+            *joblib_args : optional
+                Additional arguments to pass to joblib.Parallel
+            **joblib_kwargs : optional
+                Additional keyword arguments to pass to joblib.Parallel
+
+            Returns
+            -------
+            results : List
+                List of results from running jobs in parallel        
+        """
         # track progress
-        __n_completed_tasks = 0
+        self.__serial_n_completed_tasks = 0
         __t0 = time.time()
-        if self.progressbar: print_progress(__n_completed_tasks, self.njobs, __t0)
+        if self.progressbar: print_progress(self.__serial_n_completed_tasks, self.njobs, __t0)
 
         if self.cores == 1:
             # output list
             results = []
 
             for i in range(self.njobs):
-                if type(jobs) == int:
+                if type(self.jobs) == int:
                     results.append(self.simfunc())
                 else:
                     if self.simfunc_port:
                         results.append(self.simfunc(self.ports_array[i],
-                                                    *jobs[i]))
+                                                    *self.jobs[i]))
                     else:
-                        results.append(self.simfunc(*jobs[i]))
+                        results.append(self.simfunc(*self.jobs[i]))
                 
-                if __n_completed_tasks+1 < self.njobs:
-                    print_progress(__n_completed_tasks+1, self.njobs, __t0)
-                __n_completed_tasks += 1
+                if self.__serial_n_completed_tasks+1 < self.njobs:
+                    print_progress(self.__serial_n_completed_tasks+1, self.njobs, __t0)
+                self.__serial_n_completed_tasks += 1
         else:
             # run jobs in parallel
             joblib.parallel.BatchCompletionCallBack = TimedBatchCompletionCallBack
-            with Parallel(n_jobs=self.cores, 
-                          *joblib_args, **joblib_kwargs) as parallel:
-                # track progress
-                parallel.joblib_n_jobs = self.njobs
-                parallel.progressbar = self.progressbar
-                parallel.joblib_t0 = __t0
+            self.parallel = Parallel(n_jobs=self.cores, 
+                                     *joblib_args, **joblib_kwargs)
+            
+            # track progress
+            self.parallel.joblib_n_jobs = self.njobs
+            self.parallel.progressbar = self.progressbar
+            self.parallel.joblib_t0 = __t0
 
-                if type(jobs) == int:
-                    results = parallel(delayed(self.simfunc)() 
-                                       for i in range(self.njobs))
+            if type(self.jobs) == int:
+                results = self.parallel(delayed(self.simfunc)() 
+                                    for i in range(self.njobs))
+            else:
+                if self.simfunc_port:
+                    results = self.parallel(delayed(self.simfunc)(
+                        self.ports_array[i], *self.jobs[i]) 
+                        for i in range(self.njobs))
                 else:
-                    if self.simfunc_port:
-                        results = parallel(delayed(self.simfunc)(
-                            self.ports_array[i], *jobs[i]) 
-                            for i in range(self.njobs))
-                    else:
-                        results = parallel(delayed(self.simfunc)(*jobs[i])
-                                        for i in range(self.njobs))
-
+                    results = self.parallel(delayed(self.simfunc)(*self.jobs[i])
+                                    for i in range(self.njobs))
         self.results = results
         return results

@@ -26,6 +26,6 @@ setuptools.setup(
     install_requires=["joblib"],
     extras_require = {
         "port": ["rebound>=4.0.0", "urllib3"],
-        "dashboard":  ["rebound>=4.0.0", "urllib3", "psutil", "flask", "numpy", "bokeh"]
+        "dashboard":  ["rebound>=4.0.0", "urllib3", "flask"]
     }
 )

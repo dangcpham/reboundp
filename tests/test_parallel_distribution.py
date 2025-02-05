@@ -82,7 +82,8 @@ class TestInitialization(unittest.TestCase):
             return sim, sim_id
 
         jobs = np.arange(0, 10, 1)
-        results = setup_sim_decorated.run(jobs, progressbar=False)
+        setup_sim_decorated.init_run(jobs, progressbar=False)
+        results = setup_sim_decorated.run()
 
         self.assertEqual(len(results), len(jobs))
         self.assertAlmostEqual(results[0][0].t, max_t, 1)
@@ -99,7 +100,8 @@ class TestInitialization(unittest.TestCase):
             return sim, sim_id
 
         jobs = np.arange(0, 10, 1)
-        results = setup_sim_decorated.run(jobs, progressbar=False)
+        setup_sim_decorated.init_run(jobs, progressbar=False)
+        results = setup_sim_decorated.run()
 
         self.assertEqual(len(results), len(jobs))
         self.assertAlmostEqual(results[0][0].t, max_t, 1)
@@ -229,7 +231,8 @@ class TestInitialization(unittest.TestCase):
     def test_run(self):
         jobs = np.arange(0, 10, 1)
         rebp = ReboundParallel(simfunc = setup_sim, cores=10)
-        results = rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        results = rebp.run()
         results = results
 
         # test that results are returned for every job
@@ -239,7 +242,8 @@ class TestInitialization(unittest.TestCase):
         jobs = np.arange(0, 10, 1)
 
         rebp = ReboundParallel(simfunc = setup_sim_noport, cores=10)
-        results = rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        results = rebp.run()
         results = results
 
         # test that results are returned for every job
@@ -247,7 +251,8 @@ class TestInitialization(unittest.TestCase):
     
     def test_run_int(self):
         rebp = ReboundParallel(simfunc = setup_sim_int, cores=10)
-        results = rebp.run(jobs=10)
+        rebp.init_run(jobs=10)
+        results = rebp.run()
         results = results
 
         # test that results are returned for every job
@@ -256,7 +261,8 @@ class TestInitialization(unittest.TestCase):
     def test_run_serial(self):
         jobs = np.arange(0, 3, 1)
         rebp = ReboundParallel(simfunc = setup_sim_noport, cores=1)
-        results = rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        results = rebp.run()
         results = results
 
         # test that results are returned for every job
@@ -266,7 +272,8 @@ class TestInitialization(unittest.TestCase):
         jobs = np.arange(0, 3, 1)
         rebp = ReboundParallel(simfunc=setup_sim_noport, cores=1, 
                                progressbar=True)
-        results = rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        results = rebp.run()
         results = results
 
         # test that results are returned for every job
@@ -276,7 +283,8 @@ class TestInitialization(unittest.TestCase):
         jobs = 3
         rebp = ReboundParallel(simfunc=setup_sim_int, cores=1,
                                progressbar=False)
-        results = rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        results = rebp.run()
         results = results
 
         # test that results are returned for every job
@@ -285,7 +293,8 @@ class TestInitialization(unittest.TestCase):
     def test_return(self):
         jobs = np.arange(0, 5, 1)
         rebp = ReboundParallel(simfunc=setup_sim, cores=5, progressbar=True)
-        results = rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        results = rebp.run()
         results = results
 
         # test that each result is a tuple of (sim, sim_id, t_arr, jupiter_xyz)

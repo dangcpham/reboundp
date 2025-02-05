@@ -39,7 +39,8 @@ class TestPorts(unittest.TestCase):
                          rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
-        rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        rebp.run()
 
         # check that open ports are found
         open_ports = open_ports[0]
@@ -57,7 +58,8 @@ class TestPorts(unittest.TestCase):
                                     rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
-        rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        rebp.run()
 
         # check that fetched sim is valid
         self.assertEqual(sim[0]._status, -1)
@@ -78,7 +80,8 @@ class TestPorts(unittest.TestCase):
                                     rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
-        rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        rebp.run()
 
         # check that sim was paused
         self.assertEqual(sim[0]._status, -3)
@@ -96,7 +99,8 @@ class TestPorts(unittest.TestCase):
                                     rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
-        rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        rebp.run()
 
         # check that sim was paused
         self.assertEqual(sim[0]._status, -3)
@@ -115,7 +119,8 @@ class TestPorts(unittest.TestCase):
                                     rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
-        rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        rebp.run()
 
         # check that sim was paused
         self.assertEqual(sim[0]._status, -3)
@@ -135,7 +140,8 @@ class TestPorts(unittest.TestCase):
                                     rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
-        rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        rebp.run()
 
         # check that sim was paused
         self.assertEqual(sim[0]._status, -1)
@@ -155,7 +161,8 @@ class TestPorts(unittest.TestCase):
                                     rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
-        rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        rebp.run()
 
         # check that sim was paused
         self.assertEqual(sim[0]._status, -1)
@@ -171,7 +178,8 @@ class TestPorts(unittest.TestCase):
         threading.Timer(0.5, lambda: [rebp.end_sim(6701)]).start()
 
         # run all jobs
-        result = rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        result = rebp.run()
         sim = result[0][0]
 
         # check that sim ended early
@@ -187,7 +195,8 @@ class TestPorts(unittest.TestCase):
         threading.Timer(0.5, lambda: [rebp.send_q(6711)]).start()
 
         # run all jobs
-        result = rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        result = rebp.run()
         sim = result[0][0]
 
         # check that sim ended early
@@ -203,7 +212,8 @@ class TestPorts(unittest.TestCase):
         threading.Timer(0.5, lambda: [rebp.end_all_current_sims()]).start()
 
         # run all jobs
-        result = rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        result = rebp.run()
 
 
         # check that current sims sim ended early
@@ -228,7 +238,8 @@ class TestPorts(unittest.TestCase):
         threading.Timer(0.5, lambda: [rebp.end_all(batch_buffer=10)]).start()
 
         # run all jobs
-        results = rebp.run(jobs=jobs)
+        rebp.init_run(jobs=jobs)
+        results = rebp.run()
 
         # check that all sims ended early
         for i in range(4):

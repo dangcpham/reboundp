@@ -13,7 +13,8 @@ class TestFeaturesPort(unittest.TestCase):
 
         rebp = reboundp.ReboundParallel(test_sim)
         threading.Timer(0.5, rebp.check_port_feature).start()
-        rebp.run(jobs=10)
+        rebp.init_run(jobs=10)
+        rebp.run()
 
 if __name__ == "__main__":
     unittest.main()
