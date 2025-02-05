@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="reboundp",
-    version="0.0.4",
+    version="0.1",
     author="Dang Pham",
     author_email="dang.pham@astro.utoronto.ca",
     description="A package for managing parallelized Python-based REBOUND instances",
