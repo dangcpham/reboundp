@@ -107,15 +107,12 @@ class TestInitialization(unittest.TestCase):
         self.assertAlmostEqual(results[0][0].t, max_t, 1)
 
     def test_setup(self):
-        rebp = ReboundParallel(simfunc = setup_sim, cores=5, 
-                          port_buffer=15, port0=6000,
+        rebp = ReboundParallel(simfunc = setup_sim, cores=5,
                           progressbar=False)
 
         # test that rebp is the correct type and initialized correctly
         self.assertIsInstance(rebp, ReboundParallel)
         self.assertEqual(rebp.cores, 5)
-        self.assertEqual(rebp.port_buffer, 15)
-        self.assertEqual(rebp.port0, 6000)
 
     def test_error(self):
         # test that errors are raised for incorrect types
@@ -129,18 +126,6 @@ class TestInitialization(unittest.TestCase):
         # test progressbar arg
         self.assertRaises(TypeError, lambda: ReboundParallel(
             simfunc = setup_sim, progressbar="No"))
-        
-        # test port buffer arg
-        self.assertRaises(TypeError, lambda: ReboundParallel(
-            simfunc = setup_sim, progressbar=False, port_buffer="5"))
-        self.assertRaises(TypeError, lambda: ReboundParallel(
-            simfunc = setup_sim, progressbar=False, port_buffer=0))
-
-        # test port0 arg
-        self.assertRaises(TypeError, lambda: ReboundParallel(
-            simfunc = setup_sim,progressbar=False,port_buffer=5,port0="6000"))
-        self.assertRaises(TypeError, lambda: ReboundParallel(
-            simfunc = setup_sim,progressbar=False,port_buffer=5,port0=600_000))
 
         # test simfunc arg
         self.assertRaises(TypeError, lambda: ReboundParallel(
@@ -155,15 +140,9 @@ class TestInitialization(unittest.TestCase):
     def test_verify_before_run(self):
         # test validation of run jobs
         rebp = ReboundParallel(simfunc = setup_sim, cores=5, 
-                          port_buffer=15,
                           progressbar=False)
         with self.assertRaises(ValueError):
             rebp.njobs = None
-            rebp.verify_before_run()
-
-        with self.assertRaises(ValueError):
-            rebp.njobs = 10
-            rebp.ports_array = None
             rebp.verify_before_run()
 
     def test_get_simfunc_type(self):
@@ -216,16 +195,13 @@ class TestInitialization(unittest.TestCase):
 
     def test_reset(self):
         rebp = ReboundParallel(simfunc = setup_sim, cores=5, 
-                          port_buffer=15,
                           progressbar=False)
         rebp.njobs = 10
-        rebp.ports_array = 1234 + np.arange(0, 10, 1)
         rebp.results = [1,2,3]
         rebp.reset_run()
 
         # test that reset sets njobs, ports_array, and results to None
         self.assertIsNone(rebp.njobs)
-        self.assertIsNone(rebp.ports_array)
         self.assertIsNone(rebp.results)
 
     def test_run(self):
@@ -263,7 +239,6 @@ class TestInitialization(unittest.TestCase):
         rebp = ReboundParallel(simfunc = setup_sim_noport, cores=1)
         rebp.init_run(jobs=jobs)
         results = rebp.run()
-        results = results
 
         # test that results are returned for every job
         self.assertEqual(len(results), len(jobs))

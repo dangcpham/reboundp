@@ -2,7 +2,7 @@
 # last modified: December 2023
 
 # Python standard library
-import time, os, warnings, math, inspect, datetime, logging, tempfile, webbrowser, threading
+import time, os, warnings, math, inspect, datetime, logging, tempfile, webbrowser, threading, multiprocessing
 from typing import List
 
 # Third-party libraries
@@ -49,10 +49,15 @@ def print_progress(n_completed_tasks:int, joblib_n_jobs:int, joblib_t0:float):
         time_started = datetime.datetime.fromtimestamp(joblib_t0).strftime("on %Y-%m-%d at %H:%M:%S")
         print(f"\nFinished running {joblib_n_jobs} tasks. Started {time_started}. Walltime: {utils.time_format(time.time() - joblib_t0)}. \n")
 
+
 class TimedBatchCompletionCallBack(joblib.parallel.BatchCompletionCallBack):
     """ Custom callback for `joblib.parallel.Parallel` that prints progress to `stdout`."""
      
     def __call__(self, *args, **kwargs):
+        if self.parallel.webserver:
+            
+            urllib3.request("POST", f"{self.parallel.server_path}:{self.parallel.web_port}/update_status/{self.parallel.n_completed_tasks+1}")
+
         if self.parallel.progressbar:
             print_progress(self.parallel.n_completed_tasks,
                            self.parallel.joblib_n_jobs, 
@@ -66,8 +71,7 @@ class ReboundParallel():
         Uses `joblib.Parallel` in the backend to run simulations in parallel.
     """
     def __init__(self, simfunc:callable, 
-                 cores:int=None, progressbar:bool=False, 
-                 port_buffer:int=50, port0:int=None):
+                 cores:int=None, progressbar:bool=False):
         """ Initialize `REBOUNDParallel` object.
 
             Parameters
@@ -89,13 +93,6 @@ class ReboundParallel():
                 Default is `None`, which will use all but one core.
             progressbar : bool, optional
                 Whether to print a progress bar to stdout. Default is `False`.
-            port_buffer : int, optional
-                A buffer (we reserve more ports than we need) to avoid overusing ports.
-                Recommend to use a number higher than 5 to make sure ports are not overused.
-                Default is `10`.
-            port0 : int, optional
-                First port to use. Must be a positive, non-zero integer, between `1024` and `65535`.
-                Default is `None`, which will automatically determine and use first available port..
         """
         self.features = FEATURES
         self.cpu_count = os.cpu_count()
@@ -110,20 +107,15 @@ class ReboundParallel():
             self.cores = self.cpu_count - 1
         else:
             self.cores = cores
-        self.__serial_n_completed_tasks = 0.
 
         # port things
-        self.port_buffer = port_buffer
         self.server_path = "http://localhost"
+        self.open_ports = []
         self.progressbar = progressbar
 
-        # if port0 is not set, use first available port
-        if port0 is None: 
-            self.port0 = port_utils.first_available_port()
-        else:
-            self.port0 = port0
-
         self.results = None
+        self.n_completed_tasks = 0
+        
         self.validate_init()
 
     def simfunc_check(self)->bool:
@@ -153,14 +145,8 @@ class ReboundParallel():
         """ Validate ReboundParallel object after initialization.
             Raises TypeError if any of the parameters are invalid.
         """
-        if self.port0 > 65535 or self.port0 < 1024:
-            raise TypeError("port0 must be a positive integer between 1024 and 65535")
-
         if type(self.cores) != int or self.cores < 1:
             raise TypeError("cores must be a non-zero positive integer")
-
-        if type(self.port_buffer) != int or self.port_buffer < 1:
-            raise TypeError("port_buffer must be a non-zero positive integer")
 
         if type(self.progressbar) != bool:
             raise TypeError("progressbar must be a boolean")
@@ -171,8 +157,6 @@ class ReboundParallel():
         """
         if self.njobs is None:
             raise ValueError("njobs must be set before running")
-        if self.ports_array is None:
-            raise ValueError("ports_array must be set before running")
 
     def process_jobs(self, jobs):
         """ Process jobs argument. Check if jobs is an integer or an iterable.
@@ -227,12 +211,11 @@ class ReboundParallel():
         return __jobs
 
     def reset_run(self):
-        """ Reset ReboundParallel object's parameters: njobs, ports_array, results."""
+        """ Reset ReboundParallel object's parameters: njobs, results."""
         if self.results is not None:
             warnings.warn("Results reset; be careful when using <reboundp.results>", ResourceWarning)
 
         self.njobs = None
-        self.ports_array = None
         self.results = None
 
     def check_port_feature(self):
@@ -251,13 +234,16 @@ class ReboundParallel():
             raise ImportError("Please install reboundp with pip install reboundp[dashboard] to use this function.")
         return True
 
-    
     def webserver_start(self):
+        
         # open browser
-        threading.Timer(2, webbrowser.open, args=[f"http://localhost:8001"]).start()
-        print("Starting dashboard webserver...opening web browser at http://localhost:8001")
-        
-        
+        server = f"{self.server_path}:{self.web_port}"
+        print(f"Starting webserver at {server}")
+        if self.web_autoopen:
+            proc = threading.Timer(1, webbrowser.open, args=[server])
+            proc.start()
+            print(f"Opening web browser at {server}")
+
         # TEMPLATE DIRECTORY
         tmp = os.path.dirname(os.path.abspath(__file__))
         srcdir = os.path.abspath(os.path.join(tmp, os.pardir))
@@ -271,13 +257,18 @@ class ReboundParallel():
         log.disabled = True
 
         # ROUTING
-        # self.webapp.url_for('static', filename='style.css')
         # main dashboard
         self.webapp.route("/", 
                           methods=['get'])(self.hello_world)
         # status of all sims
         self.webapp.route("/status",
                           methods=['get'])(self.web_sim_status)
+        self.webapp.route("/update_status/<int:completed>",
+                            methods=['post'])(self.web_update_completed)
+        self.webapp.route("/port_open/<int:port>",
+                            methods=['post'])(self.web_update_port_open)
+        self.webapp.route("/port_close/<int:port>",
+                            methods=['post'])(self.web_update_port_close)
         # fetch sim to download
         self.webapp.route("/fetch_sim/<int:port>",
                           methods=['get'])(self.web_fetch_sim)
@@ -303,20 +294,23 @@ class ReboundParallel():
                             methods=['post'])(self.web_start_all)
 
         # START SERVER
-        self.webapp.run(host='0.0.0.0', port=8001)
+        self.webapp.run(host='0.0.0.0', port=self.web_port)
     
     def hello_world(self):
         return flask.render_template(f'index.html')
 
     def web_sim_status(self):
-        open_ports = self.current_open_ports()
         sim_list = {}
         n_running = 0
-        for port in open_ports:
+        for port in self.open_ports:
             try:
                 _sim = self.fetch_sim(port)
-                sim_list[str(port)] = {"simtime": _sim.t, "walltime": _sim.walltime, "status": REB_STATUS[_sim._status]}
-                n_running += 1
+                _sim_status = REB_STATUS[_sim._status]
+                sim_list[str(port)] = {"simtime": _sim.t, 
+                                       "walltime": utils.time_format(_sim.walltime), 
+                                       "status": _sim_status}
+                if _sim_status == "running":
+                    n_running += 1
             except urllib3.exceptions.MaxRetryError:
                 pass
 
@@ -324,12 +318,7 @@ class ReboundParallel():
         sim_status = {"total": self.njobs,
                       "cores": self.cores}
 
-        if self.parallel is None:
-            sim_status["completed"] = 0
-            if self.cores == 1:
-                sim_status["completed"] = self.__serial_n_completed_tasks
-        else:
-            sim_status["completed"] = self.parallel.n_completed_tasks
+        sim_status["completed"] = self.n_completed_tasks
         sim_status["running"] = n_running
 
         all_sims_status = {}
@@ -348,12 +337,24 @@ class ReboundParallel():
         except urllib3.exceptions.MaxRetryError:
             return '', 400
 
+    def web_update_port_open(self, port:int):
+        self.open_ports.append(port)
+        return '', 204
+
+    def web_update_port_close(self, port:int):
+        self.open_ports.remove(port)
+        return '', 204
+
+    def web_update_completed(self, completed:int):
+        self.n_completed_tasks = completed
+        return '', 204
+
     def web_start_sim(self, port:int):
         self.start_sim(port)
         return '', 204
 
     def web_start_all(self):
-        if self.current_open_ports() == []:
+        if self.open_ports == []:
             self.run()
         else:
             self.start_all()
@@ -378,23 +379,6 @@ class ReboundParallel():
     def web_end_all(self):
         self.end_all()
         return '', 204
-
-    def current_open_ports(self)->List[int]:
-        """ Get list of ports currently in use by `REBOUND` servers.
-
-            Parameters
-            ----------
-            None
-
-            Returns
-            -------
-            open_ports : list
-                List of ports currently in use by `REBOUND` servers
-        """
-        open_ports = port_utils.get_rebound_ports(min(self.ports_array), 
-                                    max(self.ports_array) + 2,
-                                    server_path=self.server_path)
-        return open_ports
 
     def send_space(self, port:int):
         """ Send spacebar command to `REBOUND` server at port to pause simulation.
@@ -460,7 +444,7 @@ class ReboundParallel():
 
     def pause_all(self):
         """ Pause all simulations available on ports."""
-        for port in self.current_open_ports():
+        for port in self.open_ports:
             self.pause_sim(port)
 
     def start_sim(self, port:int):
@@ -476,7 +460,7 @@ class ReboundParallel():
 
     def start_all(self):
         """ Unpause all simulations available on ports."""
-        for port in self.current_open_ports():
+        for port in self.open_ports:
             self.start_sim(port)
 
     def end_sim(self, port:int):
@@ -495,7 +479,7 @@ class ReboundParallel():
 
     def end_all_current_sims(self):
         """ End all simulations available on REBOUND ports."""
-        for port in self.current_open_ports():
+        for port in self.open_ports:
             self.end_sim(port)
 
     def end_all(self, sleep_timer:float=0.05, batch_buffer:int=10):
@@ -516,7 +500,8 @@ class ReboundParallel():
             self.end_all_current_sims()
             time.sleep(sleep_timer)
 
-    def init_run(self, jobs, cores:int=None, progressbar:bool=None, start_webserver:bool=False):
+    def init_run(self, jobs, cores:int=None, progressbar:bool=None, 
+                 start_webserver:bool=False, auto_open:bool=True):
         """ Initialize jobs to run in parallel.
         
             Parameters
@@ -528,7 +513,7 @@ class ReboundParallel():
                 `run(jobs)` dispatches jobs as follows:
 
                 1. If `jobs` is an integer, will run `simfunc` for `jobs` number of time.
-                1. If `jobs` is a 1D list or numpy array, will run `simfunc(port, *jobs[i])` for each job.
+                2. If `jobs` is a 1D list or numpy array, will run `simfunc(port, *jobs[i])` for each job.
             cores : int, optional
                 Number of cores to use. Must be a positive, non-zero integer. 
                 Default is None, which will use all but one core.
@@ -537,13 +522,18 @@ class ReboundParallel():
                 If not set, will use value from initialization (default False).
             start_webserver : bool, optional
                 Whether to start the dashboard webserver. Default is False.
+            auto_open : bool, optional
+                Whether to automatically open the dashboard webserver in a web browser. Default is False.
 
             Returns
             -------
             init_results : bool
                 Whether initialization was successful
         """
+        
         self.webserver = start_webserver
+        self.web_port = port_utils.first_available_port()
+        self.web_autoopen = auto_open
         
         # reset before running
         self.reset_run()
@@ -559,20 +549,85 @@ class ReboundParallel():
         elif self.progressbar and self.cores > 1:
             print(f"Running in parallel mode with {self.cores} cores.")
 
-        # assign ports to jobs
-        job_list = list(range(0, self.njobs))
-        port1 = self.port0 + 1
-        core_buffer = self.cores * self.port_buffer
-        self.ports_array = [(port1 + (port%core_buffer)) for port in job_list]
         self.jobs = jobs
-
-        # start webserver
-        if self.check_web_feature() and self.webserver: self.webserver_start()
 
         # validate
         self.validate_init()
-    
-    def run(self, *joblib_args, **joblib_kwargs)->List:
+
+    def __run_parallel(self, parallel)->List:
+        """ Run jobs in parallel.
+
+            Parameters
+            ----------
+            parallel : joblib.Parallel
+                Joblib.Parallel object to run jobs in parallel.
+
+            Returns
+            -------
+            results : List
+                List of results from running jobs in parallel        
+        """
+
+        if type(self.jobs) == int:
+                results = parallel(delayed(self.simfunc)() 
+                                    for i in range(self.njobs))
+        else:
+            if self.simfunc_port:
+                func = self.simfunc
+                webserver = self.webserver
+                server = f"{self.server_path}:{self.web_port}"
+                def __wrapper(job):
+                    port = port_utils.first_available_port()
+                    if webserver: urllib3.request("POST", f"{server}/port_open/{port}")
+                    val = func(port, *job)
+                    if webserver: urllib3.request("POST", f"{server}/port_close/{port}")
+                    return val
+
+                results = parallel(delayed(__wrapper)(self.jobs[i]) 
+                    for i in range(self.njobs))
+            else:
+                results = parallel(delayed(self.simfunc)(*self.jobs[i])
+                                for i in range(self.njobs))
+        self.results = results
+
+    def __run_serial(self)->List:
+        """ Run jobs in serial.
+
+            Returns
+            -------
+            results : List
+                List of results from running jobs in serial
+        """
+        __serial_n_completed_tasks = 0
+        __t0 = time.time()
+
+        # output list
+        results = []
+
+        for i in range(self.njobs):
+            if type(self.jobs) == int:
+                results.append(self.simfunc())
+            else:
+                if self.simfunc_port:
+                    port = port_utils.first_available_port()
+                    if self.webserver: urllib3.request("POST", f"{self.server_path}:{self.web_port}/port_open/{port}")
+
+                    results.append(self.simfunc(port, *self.jobs[i]))
+
+                    if self.webserver: urllib3.request("POST", f"{self.server_path}:{self.web_port}/port_close/{port}")
+                else:
+                    results.append(self.simfunc(*self.jobs[i]))
+
+            if __serial_n_completed_tasks+1 < self.njobs and self.progressbar:
+                print_progress(__serial_n_completed_tasks+1, self.njobs, __t0)
+            __serial_n_completed_tasks += 1
+
+            if self.webserver: urllib3.request("POST", f"{self.server_path}:{self.web_port}/update_status/{__serial_n_completed_tasks+1}")
+
+            self.n_completed_tasks = __serial_n_completed_tasks
+        self.results = results
+            
+    def run(self,  *joblib_args, **joblib_kwargs)->List:
         """ Run jobs in parallel.
 
             Parameters
@@ -587,49 +642,34 @@ class ReboundParallel():
             results : List
                 List of results from running jobs in parallel        
         """
-        # track progress
-        self.__serial_n_completed_tasks = 0
-        __t0 = time.time()
-        if self.progressbar: print_progress(self.__serial_n_completed_tasks, self.njobs, __t0)
+        # start webserver
+        if self.webserver and self.check_web_feature():
+            webproc = multiprocessing.Process(target=self.webserver_start)
+            webproc.start()
 
         if self.cores == 1:
-            # output list
-            results = []
-
-            for i in range(self.njobs):
-                if type(self.jobs) == int:
-                    results.append(self.simfunc())
-                else:
-                    if self.simfunc_port:
-                        results.append(self.simfunc(self.ports_array[i],
-                                                    *self.jobs[i]))
-                    else:
-                        results.append(self.simfunc(*self.jobs[i]))
-                
-                if self.__serial_n_completed_tasks+1 < self.njobs:
-                    print_progress(self.__serial_n_completed_tasks+1, self.njobs, __t0)
-                self.__serial_n_completed_tasks += 1
+            # check that server is online, if not wait a little
+            if self.webserver:
+                try: urllib3.request("GET", f"{self.server_path}:{self.web_port}")
+                except urllib3.exceptions.MaxRetryError:
+                    time.sleep(1)
+            self.__run_serial()
         else:
             # run jobs in parallel
             joblib.parallel.BatchCompletionCallBack = TimedBatchCompletionCallBack
             self.parallel = Parallel(n_jobs=self.cores, 
                                      *joblib_args, **joblib_kwargs)
-            
+
             # track progress
             self.parallel.joblib_n_jobs = self.njobs
             self.parallel.progressbar = self.progressbar
-            self.parallel.joblib_t0 = __t0
-
-            if type(self.jobs) == int:
-                results = self.parallel(delayed(self.simfunc)() 
-                                    for i in range(self.njobs))
-            else:
-                if self.simfunc_port:
-                    results = self.parallel(delayed(self.simfunc)(
-                        self.ports_array[i], *self.jobs[i]) 
-                        for i in range(self.njobs))
-                else:
-                    results = self.parallel(delayed(self.simfunc)(*self.jobs[i])
-                                    for i in range(self.njobs))
-        self.results = results
-        return results
+            self.parallel.joblib_t0 = time.time()
+            self.parallel.webserver = self.webserver
+            self.parallel.server_path = self.server_path
+            self.parallel.web_port = self.web_port
+            self.__run_parallel(self.parallel)
+        print("Simulations done...")
+        if self.webserver:
+            time.sleep(1)
+            webproc.terminate()
+        return self.results

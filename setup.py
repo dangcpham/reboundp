@@ -23,9 +23,8 @@ setuptools.setup(
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.8",
-    install_requires=["joblib"],
+    install_requires=["joblib", "rebound>=4.0.0", "urllib3"],
     extras_require = {
-        "port": ["rebound>=4.0.0", "urllib3"],
-        "dashboard":  ["rebound>=4.0.0", "urllib3", "flask"]
+        "dashboard":  ["flask"]
     }
 )

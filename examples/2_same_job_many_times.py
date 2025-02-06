@@ -1,6 +1,5 @@
 import rebound
 from reboundp import ReboundParallel
-import numpy as np
 
 @ReboundParallel
 def setup_sim():
@@ -14,7 +13,8 @@ def setup_sim():
     return sim, xyz
 
 # run a job 10 times, use 10 cores
-results = setup_sim.run(jobs=10, cores=10)
+setup_sim.init_run(jobs=10, cores=10, progressbar=True)
+results = setup_sim.run()
 
 for result in results:
     sim, xyz = result

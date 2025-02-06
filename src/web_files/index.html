@@ -7,13 +7,13 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- <header>
-        <h1>Rebound Simulations</h1>
-    </header> -->
     <script>
+        const intervalID = setInterval(updateStatus, 1000);
+
         async function updateStatus() {
             const response = await fetch('/status');
             const data = await response.json();
+
             document.getElementById('completed').textContent = data.summary.completed;
             document.getElementById('total').textContent = data.summary.total;
             document.getElementById('running-count').textContent = data.summary.running;
@@ -26,9 +26,17 @@
                 document.getElementById('start-all-simulations').disabled = false;
                 document.getElementById('pause-all-simulations').disabled = true;
             }
-            
+
+            if (data.summary.completed === data.summary.total) {
+                clearInterval(intervalID);
+                document.getElementById('start-all-simulations').disabled = true;
+                document.getElementById('pause-all-simulations').disabled = true;
+                document.getElementById('end-all-simulations').disabled = true;
+            }
+
             const progressBody = document.getElementById('progress-body');
             progressBody.innerHTML = '';
+
             for (let key in data.sims) {
                 const row = document.createElement('tr');
                 if (data.sims[key].status === 'running') {
@@ -46,7 +54,7 @@
                                  <a href="/end_sim/${key}">End</a>
                                  </td>`;
                 }
-                
+
                 progressBody.appendChild(row);
             }
         }
@@ -73,7 +81,7 @@
                     <tr>
                         <th>Simulation port</th>
                         <th>Simulation time</th>
-                        <th>Walltime (s)</th>
+                        <th>Walltime                                                                                                                                                                                    </th>
                     </tr>
                 </thead>
                 <tbody id="progress-body">
@@ -84,24 +92,16 @@
     <script>
         document.getElementById('start-all-simulations').addEventListener('click', async () => {
             await fetch('/start_all', { method: 'POST' });
-            document.getElementById('start-all-simulations').disabled = true;
-            document.getElementById('pause-all-simulations').disabled = false;
             updateStatus();
         });
         document.getElementById('pause-all-simulations').addEventListener('click', async () => {
             await fetch('/pause_all', { method: 'POST' });
-            document.getElementById('start-all-simulations').disabled = false;
-            document.getElementById('pause-all-simulations').disabled = true;
             updateStatus();
         });
         document.getElementById('end-all-simulations').addEventListener('click', async () => {
-            await fetch('/end_all', { method: 'POST' });
-            document.getElementById('start-all-simulations').disabled = false;
-            document.getElementById('pause-all-simulations').disabled = false;
+            await fetch('/end_all',   { method: 'POST' });
             updateStatus();
         });
-        
-        setInterval(updateStatus, 3000);
     </script>
 </body>
 </html>

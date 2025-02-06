@@ -4,19 +4,18 @@
 
 ![badge](https://gist.githubusercontent.com/dangcpham/6807845416d284aea12220200073b4ed/raw/483b964bf3526932d5e24f94f58da623c8c1f0b2/test.svg)
 ---
-**Version 0.1**
+**Version 0.2**
  - [x] Initiate parallel `REBOUND` instances
  - [x] Progressbar
  - [x] Access `REBOUND` ports
  - [x] Pause, unpause, and stop parallel instances
  - [x] Fetch simulations from ports
  - [x] Separate webserver to manage separate parallel instances
- - [ ] Dashboard showing CPU usage
  - [x] Dashboard visualizing running simulations
 ---
 **Dependencies**: 
- - [rebound](https://github.com/hannorein/rebound) and [joblib](https://github.com/joblib/joblib)
- - If you want the dashboard, also requires [flask](https://flask.palletsprojects.com/en/stable/) and [urllib3](https://pypi.org/project/urllib3/)
+ - [rebound](https://github.com/hannorein/rebound), [joblib](https://github.com/joblib/joblib)
+ - If you want the dashboard (e.g. can only run part two and three below): `REBOUND` version 4+, [flask](https://flask.palletsprojects.com/en/stable/) and [urllib3](https://pypi.org/project/urllib3/)
 
 **Installation**: 
  - clone this repository with `git clone`
@@ -29,7 +28,8 @@ import rebound
 import numpy as np
 from reboundp import ReboundParallel
 
-def setup_sim(port, ecc):
+@ReboundParallel
+def rebound_sim(port, ecc):
    sim = rebound.Simulation()
    sim.add(m=1)
    sim.add(m=1e-3, a=1, e=ecc)
@@ -38,7 +38,7 @@ def setup_sim(port, ecc):
    # IMPORTANT: need this line
    sim.start_server(port=port)
    
-   t_arr = np.linspace(0,  1e5,  100)
+   t_arr = np.linspace(0,  1e4,  100)
    planet_xyz = []
 
    for t in t_arr:
@@ -52,12 +52,18 @@ def setup_sim(port, ecc):
    sim.stop_server()
    return sim, planet_xyz
 
-# run setup_sim over 100 different eccentricities
-ecc = np.geomspace(0.9, 1-1e-5, 100)
+# run setup_sim over 50 different eccentricities
+ecc = np.geomspace(0.9, 1-1e-3, 50)
 
 # run using 10 cores
-parallel = ReboundParallel(simfunc = setup_sim)
-parallel.init_run(jobs=ecc, cores=10, start_webserver=True)
+rebound_sim.init_run(jobs=ecc, cores=10, 
+                     start_webserver=True, auto_open=True,
+                     progressbar=False)
+rebound_sim.run()
+
+# after the run
+results = rebound_sim.results
+# ...whatever else to do with results...
 ```
 ---
 **Part two**: you hate overhead and just want to run the simulations in parallel quickly.
@@ -78,7 +84,8 @@ def setup_sim(ecc):
 ecc_arr = np.linspace(0, 0.999, 100)
 # run in parallel using all cores
 setup_sim.init_run(jobs=ecc_arr, progressbar=True)
-results = setup_sim.run()
+setup_sim.run()
+results = setup_sim.results
 ```
 This comes with a nice progressbar :):
 ```
@@ -97,6 +104,8 @@ def setup_sim():
    return sim
 
 # run setup_sim 10 times in parallel using 10 cores
-results = setup_sim.run(jobs=10, cores=10)
+# no progressbar, no webserver
+setup_sim.init_run(jobs=10, cores=10)
+results = setup_sim.run()
 ```
 ---
