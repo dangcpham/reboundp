@@ -2,7 +2,6 @@
 # last modified: February 2025
 
 import socket
-import psutil
 
 def first_available_port() -> int:
     """ Get the first available port on localhost.
