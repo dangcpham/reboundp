@@ -38,7 +38,7 @@ def rebound_sim(port, ecc):
    # IMPORTANT: need this line
    sim.start_server(port=port)
    
-   t_arr = np.linspace(0,  1e4,  100)
+   t_arr = np.linspace(0,  1e5,  100)
    planet_xyz = []
 
    for t in t_arr:

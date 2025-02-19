@@ -43,14 +43,14 @@
                     row.innerHTML = `<td>${key}</td><td>${data.sims[key].simtime}</td><td>${data.sims[key].walltime}</td>
                                  <td>
                                  <a href="/pause_sim/${key}" class="pause-btn" onClick="updateStatus()">Pause</a> | 
-                                 <a href="http://localhost:${key}">View</a> | <a href="/fetch_sim/${key}">Download</a> | 
+                                 <a href="http://localhost:${key}" target="_blank">View</a> | <a href="/fetch_sim/${key}">Download</a> | 
                                  <a href="/end_sim/${key}">End</a>
                                  </td>`;
                 } else {
                     row.innerHTML = `<td>${key}</td><td>${data.sims[key].simtime}</td><td>${data.sims[key].walltime}</td>
                                  <td>
                                  <a href="/start_sim/${key}" class="start-btn" onClick="updateStatus()"">Start</a> | 
-                                 <a href="http://localhost:${key}">View</a> | <a href="/fetch_sim/${key}">Download</a> | 
+                                 <a href="http://localhost:${key}" target="_blank">View</a> | <a href="/fetch_sim/${key}">Download</a> | 
                                  <a href="/end_sim/${key}">End</a>
                                  </td>`;
                 }
