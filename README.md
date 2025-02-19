@@ -15,7 +15,7 @@
 ---
 **Dependencies**: 
  - [rebound](https://github.com/hannorein/rebound), [joblib](https://github.com/joblib/joblib)
- - If you want the dashboard (e.g. can only run part two and three below): `REBOUND` version 4+, [flask](https://flask.palletsprojects.com/en/stable/) and [urllib3](https://pypi.org/project/urllib3/)
+ - If you want the web dashboard: `REBOUND` version 4+, [flask](https://flask.palletsprojects.com/en/stable/) and [urllib3](https://pypi.org/project/urllib3/)
 
 **Installation**: 
  - clone this repository with `git clone`

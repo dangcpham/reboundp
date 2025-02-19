@@ -644,8 +644,8 @@ class ReboundParallel():
         """
         # start webserver
         if self.webserver and self.check_web_feature():
-            webproc = multiprocessing.Process(target=self.webserver_start)
-            webproc.start()
+            pool = multiprocessing.pool.ThreadPool()
+            pool.apply_async(self.webserver_start)
 
         if self.cores == 1:
             # check that server is online, if not wait a little
@@ -671,5 +671,6 @@ class ReboundParallel():
         print("Simulations done...")
         if self.webserver:
             time.sleep(1)
-            webproc.terminate()
+            pool.terminate()
+            pool.close()
         return self.results
